@@ -1,0 +1,1307 @@
+<title>Open Loops</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a single readable column for a 380-460px side window. Each source has a colour stripe; one bold line per item, one quiet line of detail. */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --fg: #16181d;
+  --fg-2: #4b5160;
+  --muted: #7a8190;
+  --line: #e3e6eb;
+  --accent: #c2410c;
+  --accent-soft: #fff1e8;
+  --ok: #15803d;
+  --warn: #b91c1c;
+  --c-calendar: #2563eb;
+  --c-slack: #d6336c;
+  --c-github: #6b21a8;
+  --c-linear: #4f46e5;
+  --c-claude: #c2410c;
+  --font: "Source Sans 3", "Helvetica Neue", Arial, system-ui, sans-serif;
+}
+:root { --warn: #dc2626; --ok: #16a34a; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121418; --surface: #1b1e24; --fg: #eef0f3; --fg-2: #c3c8d1; --muted: #8e95a3; --line: #2a2f38;
+    --accent: #fb923c; --accent-soft: #3a2415; --ok: #4ade80; --warn: #f87171;
+    --c-calendar: #60a5fa; --c-slack: #f472b6; --c-github: #c084fc; --c-linear: #818cf8; --c-claude: #fb923c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121418; --surface: #1b1e24; --fg: #eef0f3; --fg-2: #c3c8d1; --muted: #8e95a3; --line: #2a2f38;
+  --accent: #fb923c; --accent-soft: #3a2415; --ok: #4ade80; --warn: #f87171;
+  --c-calendar: #60a5fa; --c-slack: #f472b6; --c-github: #c084fc; --c-linear: #818cf8; --c-claude: #fb923c;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+#app { max-width: 1800px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; padding-block: 18px 40px; }
+/* One column per tool; as many across as fit at 320px each, the rest wrap to the next row. */
+#groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 22px 18px; align-items: start; }
+#groups > .empty { grid-column: 1 / -1; }
+#donelist { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 6px 18px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+h1 small { font-size: 13px; font-weight: 600; color: var(--fg-2); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; }
+.tools { display: flex; gap: 8px; }
+button {
+  font: inherit; font-size: 14px; font-weight: 500; color: var(--fg-2); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); color: var(--fg); }
+button:focus-visible { outline: 2px solid var(--c-calendar); outline-offset: 2px; }
+button[disabled] { opacity: .5; cursor: default; }
+section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.group-h { display: flex; align-items: baseline; gap: 10px; padding-inline: 2px; }
+.group-h .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sc); align-self: center; flex: none; }
+.group-h .label { font-size: 17px; font-weight: 600; }
+.group-h .n { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.group-h .tag { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+.group-h .tag.you { color: var(--accent); font-weight: 600; }
+ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+li.row {
+  --sc: var(--muted);
+  position: relative; display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 12px 18px; min-width: 0;
+}
+li.row::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 3px 3px 0; background: var(--sc); }
+li.row.now { border-color: var(--c-calendar); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-calendar) 25%, transparent); }
+li.row.past { opacity: 0.5; }
+li.row.rsvp { --rc: var(--warn); border-color: var(--rc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--rc) 22%, transparent); }
+li.row.rsvp.ask { --rc: var(--accent); }
+li.row.rsvp .when { color: var(--rc); }
+.pill.warn { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
+.pill.ask { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.pill.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+li[data-src="calendar"] { --sc: var(--c-calendar); } li[data-src="slack"] { --sc: var(--c-slack); }
+li[data-src="github"] { --sc: var(--c-github); } li[data-src="linear"] { --sc: var(--c-linear); } li[data-src="claude"] { --sc: var(--c-claude); }
+.t { grid-column: 1; grid-row: 1; min-width: 0; overflow-wrap: anywhere; font-size: 16px; font-weight: 500; line-height: 1.35; }
+.t a { color: inherit; text-decoration: none; }
+.t a:hover { text-decoration: underline; text-decoration-color: var(--muted); }
+.c { grid-column: 1; grid-row: 2; font-size: 13.5px; color: var(--fg-2); min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.c .live { color: var(--ok); font-weight: 600; }
+.c .when { color: var(--c-calendar); font-weight: 600; }
+.c .age { color: var(--muted); }
+.pill.attn { background: var(--accent); color: #fff; border: 0; cursor: pointer; font: inherit; font-size: 11.5px; font-weight: 600; padding: 1px 8px; }
+.pill.attn:hover { filter: brightness(1.1); }
+.pill.agents { background: color-mix(in srgb, var(--c-claude) 14%, transparent); color: var(--c-claude); }
+.pill.slack { background: color-mix(in srgb, var(--c-slack) 14%, transparent); color: var(--c-slack); }
+.pill.linear { background: color-mix(in srgb, var(--c-linear) 14%, transparent); color: var(--c-linear); }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--c-github) 14%, transparent); color: var(--c-github); margin-right: 6px; vertical-align: 1px; }
+.act { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+li.row:not(:has(.act button)) { grid-template-columns: 1fr; }
+li.row:not(:has(.act button)) .act { display: none; }
+.act button.done {
+  width: 38px; height: 38px; padding: 0; border-radius: 50%; font-size: 18px; line-height: 1;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--accent); background: var(--accent-soft);
+}
+.act button.done:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.act button.undo { font-size: 13px; padding: 4px 10px; }
+.act { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.act button.send {
+  width: 38px; height: 38px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--c-claude); border-color: color-mix(in srgb, var(--c-claude) 45%, var(--line)); background: color-mix(in srgb, var(--c-claude) 10%, transparent);
+  transition: transform .12s ease, background .12s ease;
+}
+.act button.send:hover, li.row.composing .act button.send { background: var(--c-claude); color: #fff; border-color: var(--c-claude); transform: scale(1.06); }
+.composer { grid-column: 1 / -1; display: flex; gap: 8px; align-items: stretch; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.composer textarea { flex: 1; min-height: 46px; resize: vertical; font: inherit; font-size: 13.5px; line-height: 1.35; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
+.composer textarea:focus { outline: 2px solid color-mix(in srgb, var(--c-claude) 45%, transparent); border-color: var(--c-claude); }
+.composer .gowrap { position: relative; display: flex; }
+.composer button.go { width: 46px; border-radius: 10px; font-size: 18px; background: var(--c-claude); color: #fff; border-color: var(--c-claude); }
+.composer button.go:hover { filter: brightness(1.1); }
+.composer .menu { position: absolute; right: 0; top: calc(100% - 2px); z-index: 5; min-width: 260px; max-width: 380px; padding: 6px; display: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.composer .gowrap:hover .menu { display: block; }
+.composer .menu .mh { font-size: 11px; color: var(--muted); padding: 4px 10px 2px; text-transform: uppercase; letter-spacing: .04em; }
+.composer .menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.composer .menu button:hover { background: color-mix(in srgb, var(--c-claude) 12%, transparent); }
+.composer .menu button b { color: var(--c-claude); font-weight: 700; margin-right: 4px; }
+.composer .menu button .live { font-size: 11px; }
+.pill.sent, a.pill.sent { background: color-mix(in srgb, var(--c-claude) 14%, transparent); color: var(--c-claude); text-decoration: none; }
+.empty { color: var(--fg-2); border: 1px dashed var(--line); border-radius: 10px; padding: 26px 16px; text-align: center; font-size: 15px; }
+.empty b { color: var(--fg); font-weight: 600; display: block; margin-bottom: 4px; font-size: 16px; }
+details.done { border-top: 1px solid var(--line); padding-top: 12px; }
+details.done summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fg-2); margin-bottom: 8px; }
+details.done li.row { opacity: 0.75; }
+details.done .t { text-decoration: line-through; text-decoration-color: var(--muted); font-weight: 400; }
+.hint { font-size: 14px; color: var(--fg-2); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.hint code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+#groupsbox { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#groupsbox .glabel { font-weight: 600; color: var(--fg); margin-right: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; background: color-mix(in srgb, var(--c-slack) 12%, transparent); color: var(--c-slack); border-radius: 999px; padding: 2px 6px 2px 10px; font-weight: 600; font-size: 13px; }
+.chip button { border: 0; background: transparent; color: inherit; padding: 0 3px; font-size: 15px; line-height: 1; border-radius: 50%; }
+.chip button:hover { background: color-mix(in srgb, var(--c-slack) 25%, transparent); color: inherit; border: 0; }
+#groupsbox input { font: inherit; font-size: 14px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); min-width: 170px; }
+#groupsbox .gstatus { flex-basis: 100%; font-size: 13px; color: var(--muted); }
+#groupsugg { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+button.sugg { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 7px 10px; border-radius: 8px; }
+button.sugg b { font-weight: 600; color: var(--fg); }
+button.sugg span { font-size: 12px; color: var(--muted); }
+button.sugg:hover b { color: var(--c-slack); }
+button.sugg i { font-style: italic; font-size: 12px; color: var(--fg-2); overflow-wrap: anywhere; }
+.sugg-row { display: flex; gap: 6px; align-items: stretch; }
+.sugg-row .sugg { flex: 1; min-width: 0; }
+button.namegroup { font-size: 12px; padding: 4px 8px; align-self: center; white-space: nowrap; }
+#groupsbox .gstatus.bad { color: var(--warn); }
+footer.sync { font-size: 12.5px; color: var(--muted); display: flex; gap: 4px 14px; flex-wrap: wrap; padding-top: 6px; border-top: 1px solid var(--line); }
+footer.sync .bad { color: var(--warn); }
+#pipvideo { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; bottom: 0; }
+@media (prefers-reduced-motion: no-preference) { li.row { transition: opacity .2s, box-shadow .2s; } }
+</style>
+
+<div id="app">
+  <header>
+    <h1>Open Loops <small id="count" hidden></small></h1>
+    <div class="tools">
+      <button id="groupsbtn" type="button" title="Slack user groups whose mentions count as yours">Groups</button>
+      <button id="refresh" type="button" title="Pull Slack, Linear and Calendar now">Pull</button>
+      <button id="scan" type="button" title="Run the GitHub + Claude sessions collector now">Scan</button>
+      <button id="float" type="button" title="Pop out into an always-on-top window">Float</button>
+    </div>
+  </header>
+  <div id="groups">
+    <div class="empty" id="loading"><b>Loading your open loops</b>Mentions, reviews, assignments, meetings and sessions.</div>
+  </div>
+  <div id="groupsbox" class="hint" hidden>
+    <span class="glabel">Slack groups</span>
+    <span id="groupchips"></span>
+    <input id="groupinput" type="text" placeholder="add @handle or S… id" autocomplete="off" spellcheck="false">
+    <button id="groupadd" type="button">Add</button>
+    <button id="grouprescan" type="button" title="Scan recent messages in your channels for user groups">Rescan</button>
+    <span class="gstatus" id="groupstatus">Mentions of these groups show up as your Slack loops. Removing one stops new cards; existing ones stay.</span>
+    <div id="groupsugg" hidden></div>
+  </div>
+  <div id="hint" class="hint" hidden></div>
+  <details class="done" id="donebox" hidden>
+    <summary>Done today · <span id="donecount">0</span></summary>
+    <ul id="donelist"></ul>
+  </details>
+  <footer class="sync" id="sync">Connecting to Slack, Linear and Calendar…</footer>
+</div>
+<video id="pipvideo" muted playsinline aria-hidden="true"></video>
+
+<script>
+(() => {
+  // Per-person settings live in the store at meta/config, never in this file. See docs/CONFIG.md.
+  let cfg = {};
+  const SOURCES = [
+    { key: 'calendar', label: 'Today', manual: false },
+    { key: 'slack',    label: 'Slack', manual: true },
+    { key: 'github',   label: 'GitHub', manual: true, auto: true },
+    { key: 'linear',   label: 'Linear', manual: false, note: 'Closes itself · you close mentions' },
+    { key: 'claude',   label: 'Claude sessions', manual: true },
+  ];
+  const POLL_MS = 5 * 60 * 1000;
+  const OVERLAP_S = 10 * 60;              // re-read this much before each cursor; ids dedup the overlap
+  const FIRST_LOOKBACK_S = 3 * 24 * 3600; // first pull only, when no cursor exists yet
+  const $ = (id) => document.getElementById(id);
+  const app = $('app');
+  let db = null, mcp = null;
+  let tasks = new Map();   // id -> {id, ...fields}
+  let sync = null;         // meta/sync from the scheduled collector
+  const fresh = {};        // source -> {at} | {err}
+  const inflight = new Set();
+  let polling = false, pipWin = null, canvas = null;
+  let comments = null, composing = null, closeTimer = null, openTimer = null, scanRequestedAt = null, listener = null;  // listener: canSendToClaude() answer
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = (n) => String(n).padStart(2, '0');
+  const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const localIso = (d) => `${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const nowIso = () => new Date().toISOString();
+  const nowS = () => Math.floor(Date.now() / 1000);
+  const ago = (iso) => {
+    if (!iso) return '';
+    const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (m < 1) return 'now';
+    if (m < 60) return m + 'm';
+    const h = Math.round(m / 60);
+    if (h < 24) return h + 'h';
+    return Math.round(h / 24) + 'd';
+  };
+
+  // ---- App deep links: open Slack and Claude in their desktop apps, no browser hop ----
+  const IN_CLAUDE_APP = /\bClaude\b|Electron/i.test(navigator.userAgent);
+  function sessionHref(url) { return url && /^claude:\/\//.test(url) && !IN_CLAUDE_APP ? 'https://claude.ai/code' : url; }
+  function appUrl(t) {
+    if (t.source === 'slack' && t.url && /^T[A-Z0-9]+$/.test(cfg.slack_team_id || '')) {
+      const m = t.url.match(/\/archives\/([A-Z0-9]+)\/p(\d{10})(\d{6})(?:\?.*?thread_ts=([\d.]+))?/);
+      if (m) return `slack://channel?team=${cfg.slack_team_id}&id=${m[1]}&message=${m[2]}.${m[3]}${m[4] ? '&thread_ts=' + m[4] : ''}`;
+    }
+    if (t.source === 'claude' && /^claude:\/\//.test(t.url || '')) return sessionHref(t.url);
+    return null;
+  }
+
+  // ---- Render -----------------------------------------------------------
+  const CLAUDE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="15.2" y1="12.4" x2="21.1" y2="13.3"/><line x1="14.5" y1="14.0" x2="17.8" y2="16.6"/><line x1="13.2" y1="15.0" x2="15.4" y2="20.3"/><line x1="11.6" y1="15.2" x2="10.9" y2="19.7"/><line x1="10.0" y1="14.5" x2="6.2" y2="19.4"/><line x1="9.0" y1="13.2" x2="5.3" y2="14.7"/><line x1="8.8" y1="11.6" x2="3.0" y2="10.7"/><line x1="9.5" y1="10.0" x2="6.0" y2="7.3"/><line x1="10.8" y1="9.0" x2="8.5" y2="3.4"/><line x1="12.4" y1="8.8" x2="13.0" y2="4.6"/><line x1="14.0" y1="9.5" x2="17.5" y2="5.0"/><line x1="15.0" y1="10.8" x2="19.1" y2="9.1"/></svg>';
+  const CI = { SUCCESS: ['CI ✓', 'ok'], FAILURE: ['CI ✗', 'warn'], ERROR: ['CI ✗', 'warn'], PENDING: ['CI …', 'ask'], EXPECTED: ['CI …', 'ask'] };
+  const REVIEW = { APPROVED: ['approved', 'ok'], CHANGES_REQUESTED: ['changes requested', 'warn'] };
+  function ghStatus(t) { const out = []; if (CI[t.ci]) out.push(CI[t.ci]); if (REVIEW[t.review]) out.push(REVIEW[t.review]); return out; }
+  // Sent-to-Claude pill: requested → received (link) → done (green ✓ once the target session went idle after receiving it).
+  function sentState(t) {
+    if (!t.sent_at) return null;
+    const who = t.sent_title || 'Claude';
+    if (!t.dispatched_at) return { kind: 'sent', text: `sending to ${t.sent_target === 'new' ? 'a new session' : who}…`, url: '' };
+    const sess = tasks.get('claude-' + (t.sent_target || ''));
+    const finished = sess && !sess.running && (sess.last_activity_at || '') > t.dispatched_at;
+    if (finished) return { kind: 'ok', text: `✓ ${who}`, url: t.sent_url || sess.url || '', summary: sess.summary || '' };
+    return { kind: 'sent', text: `${sess && sess.running ? '⟳ ' : '→ '}${who}`, url: t.sent_url || '' };
+  }
+  const linearMention = (t) => t.source === 'linear' && Array.isArray(t.tags) && t.tags.includes('mention');
+  function rowHtml(t, manual, inDone) {
+    const now = Date.now();
+    let cls = 'row';
+    let ctx = esc(t.context || '');
+    if (t.source === 'calendar' && t.start_at && t.end_at) {
+      const s = new Date(t.start_at).getTime(), e = new Date(t.end_at).getTime();
+      if (now >= s && now < e) cls += ' now';
+      else if (now >= e) cls += ' past';
+      const RSVP = { needsAction: 'Needs reply', declined: 'Declined' };
+      let pill = '';
+      if (RSVP[t.rsvp]) { const ask = t.rsvp === 'needsAction'; cls += ask ? ' rsvp ask' : ' rsvp'; pill = `<span class="pill ${ask ? 'ask' : 'warn'}">${RSVP[t.rsvp]}</span>`; }
+      ctx = `${pill}<span class="when">${hhmm(t.start_at)}–${hhmm(t.end_at)}</span>${t.context ? ' · ' + esc(t.context) : ''}`;
+    } else if (t.source === 'claude') {
+      let pills = '';
+      if (t.attention) pills += `<button type="button" class="pill attn" data-seen="${esc(t.id)}" title="Claude finished a turn since you last opened this here. Click to clear.">New reply</button>`;
+      if (t.agents_total > 0) {
+        const running = t.agents_running || 0;
+        pills += `<span class="pill agents">${t.agents_total} agent${t.agents_total === 1 ? '' : 's'} · ${running ? running + ' running' : 'all done'}</span>`;
+      }
+      ctx = `${pills}${t.running ? '<span class="live">running</span> · ' : ''}${esc(t.context || '')}${t.context ? ' · ' : ''}<span class="age">${ago(t.created_at)}</span>`;
+    } else {
+      let pill = '';
+      if (t.source === 'github') {
+        const names = { mine: 'My PR', review_requested: 'Review', mention: 'Mention' };
+        const tags = (Array.isArray(t.tags) && t.tags.length ? t.tags : [t.state]).filter(Boolean);
+        pill = tags.map((x) => `<span class="pill">${names[x] || esc(x)}</span>`).join('') + ghStatus(t).map(([txt, k]) => `<span class="pill ${k}">${txt}</span>`).join('');
+      } else if (t.source === 'slack' && (t.mentions || 0) > 1) {
+        pill = `<span class="pill slack">${t.mentions} mentions</span>`;
+      } else if (linearMention(t)) {
+        pill = `<span class="pill linear">Mention${(t.mentions || 0) > 1 ? ' ×' + t.mentions : ''}</span>`;
+        if (t.mention_by) ctx = `${ctx}${ctx ? ' · ' : ''}${esc(t.mention_by)}: ${esc(t.mention_text || '')}`;
+      }
+      ctx = `${pill}${ctx}${ctx ? ' · ' : ''}<span class="age">${ago(t.created_at)}</span>`;
+    }
+    const app = appUrl(t);
+    const href = app || t.url;
+    const title = href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${app ? ' title="Opens in the app"' : ''}>${esc(t.title)}</a>` : esc(t.title);
+    let act = '';
+    if (inDone) act = `<button type="button" class="undo" data-reopen="${esc(t.id)}" title="Reopen">Undo</button>`;
+    else {
+      if (manual) act = `<button type="button" class="done" data-done="${esc(t.id)}" title="Mark resolved">✓</button>`;
+      if (t.source !== 'claude') act += `<button type="button" class="send" data-send="${esc(t.id)}" title="Send this to Claude">${CLAUDE_ICON}</button>`;
+    }
+    if (t.sent_at) {
+      const st = sentState(t);
+      const tip = st.kind === 'ok' ? `Done, or waiting for your answer${st.summary ? ' · ' + esc(st.summary) : ''}` : t.dispatched_at ? 'Open the Claude session' : `Requested ${esc(ago(t.sent_at))}; a Claude session must be listening to pick it up`;
+      ctx = (st.url ? `<a class="pill ${st.kind}" href="${esc(sessionHref(st.url))}" target="_blank" rel="noopener" title="${tip}${IN_CLAUDE_APP ? '' : ' · opens the Code tab on claude.ai; pick the session in its sidebar'}">${esc(st.text)}</a>` : `<span class="pill ${st.kind}" title="${tip}">${esc(st.text)}</span>`) + ctx;
+    }
+    const open = !inDone && composing === t.id;
+    if (open) cls += ' composing';
+    return `<li class="${cls}" data-id="${esc(t.id)}" data-src="${esc(t.source)}"><div class="t">${title}</div><div class="c">${ctx}</div><div class="act">${act}</div>${open ? composerHtml(t) : ''}</li>`;
+  }
+
+  function render() {
+    if (composing) { const ta = document.querySelector('textarea[data-note]'); if (ta && (ta.value.trim() || document.activeElement === ta)) return; }
+    const all = [...tasks.values()];
+    const open = all.filter((t) => t.open);
+    const bySrc = {};
+    for (const t of open) (bySrc[t.source] ||= []).push(t);
+    let html = '';
+    for (const s of SOURCES) {
+      const items = bySrc[s.key];
+      if (!items || !items.length) continue;
+      if (s.key === 'calendar') items.sort((a, b) => (a.start_at || '').localeCompare(b.start_at || ''));
+      else items.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+      html += `<section><div class="group-h" style="--sc: var(--c-${s.key})"><span class="dot"></span><span class="label">${s.label}</span><span class="n">${items.length}</span><span class="tag ${s.manual ? 'you' : ''}">${s.note || (s.manual && s.auto ? 'You close, or it closes itself' : s.manual ? 'You close these' : 'Closes itself')}</span></div><ul>`;
+      html += items.map((t) => rowHtml(t, s.manual || linearMention(t), false)).join('');
+      html += '</ul></section>';
+    }
+    if (!html) {
+      html = db
+        ? '<div class="empty"><b>Nothing open</b>Mentions, reviews, assignments, meetings and sessions appear here as they arrive.</div>'
+        : '<div class="empty"><b>Sign in to see your loops</b>The list lives in a shared store that only signed-in viewers can open.</div>';
+    }
+    $('groups').innerHTML = html;
+    $('count').textContent = open.length ? open.length + ' open' : '';
+    $('count').hidden = open.length === 0;
+    document.title = open.length ? `(${open.length}) Open Loops` : 'Open Loops';
+
+    const todayIso = startOfToday().toISOString();
+    const done = all.filter((t) => !t.open && t.resolved_at && t.resolved_at >= todayIso)
+      .sort((a, b) => (b.resolved_at || '').localeCompare(a.resolved_at || ''));
+    $('donebox').hidden = done.length === 0;
+    $('donecount').textContent = done.length;
+    $('donelist').innerHTML = done.map((t) => rowHtml(t, false, true)).join('');
+    renderSync();
+    drawPip();
+  }
+
+  const FIX = {
+    needs_reauth: (s) => `reconnect ${s} in claude.ai → Settings → Connectors`,
+    server_not_connected: (s) => `add ${s} in claude.ai → Settings → Connectors`,
+    selection_required: (s) => `choose which ${s} connector to use`,
+    not_in_manifest: (s) => `${s} not allowed for this page`,
+    blocked_by_policy: (s) => `${s} blocked by policy`,
+    approval_required: (s) => `${s} needs your approval`,
+    consent_required: (s) => `${s} needs your approval`,
+    tool_error: (s, e) => `${s}: ${(e.message || 'tool failed').slice(0, 80)}`,
+    server_unavailable: (s) => `${s} unreachable`,
+  };
+  function renderSync() {
+    const parts = [];
+    for (const [k, label] of [['slack', 'slack'], ['linear', 'linear'], ['calendar', 'calendar']]) {
+      const f = fresh[k];
+      if (!f) { parts.push(`<span>${label} …</span>`); continue; }
+      if (f.err) {
+        const fn = FIX[f.err.code] || ((s, e) => `${s}: ${e.code}`);
+        parts.push(`<span class="bad">${fn(f.err.server || label, f.err)}</span>`);
+      } else parts.push(`<span>${label} ${ago(f.at)}${k === 'slack' && slackGroups.ids.length ? ` · ${slackGroups.ids.length} group${slackGroups.ids.length === 1 ? '' : 's'}` : ''}</span>`);
+    }
+    const scanning = scanRequestedAt && (!sync || !sync.ran_at || sync.ran_at < scanRequestedAt);
+    if (scanning) parts.push(`<span>github+sessions · scan requested ${ago(scanRequestedAt)}</span>`);
+    else if (sync && sync.ran_at) {
+      const mins = (Date.now() - new Date(sync.ran_at).getTime()) / 60000;
+      parts.push(`<span class="${mins > 70 ? 'bad' : ''}">github+sessions ${ago(sync.ran_at)}${mins > 70 ? ' · Claude app closed?' : ''}</span>`);
+      if (sync.errors) for (const [k, v] of Object.entries(sync.errors)) parts.push(`<span class="bad">${esc(k)}: ${esc(String(v).slice(0, 60))}</span>`);
+    } else parts.push('<span>github+sessions · no run yet</span>');
+    if (comments) {
+      const L = { available: ['', 'Claude session listening'], no_session: ['bad', 'no Claude session listening · ✦ and Scan fall back to copy + open'], writers_only: ['bad', 'send to Claude needs edit access'], off: ['bad', 'send to Claude is off here'] };
+      const [cls, msg] = L[listener] || ['', 'Claude listener …'];
+      parts.push(`<span class="${cls}" title="A Claude Code session that watches this page receives ✦ sends and Scan requests">${msg}</span>`);
+    }
+    if (!mcp && db) parts.unshift('<span class="bad">live polling runs only inside the claude.ai viewer</span>');
+    $('sync').innerHTML = parts.join('');
+    if (comments) comments.canSendToClaude().then((v) => { if (v !== listener) { listener = v; renderSync(); } }).catch(() => { if (listener !== 'off') { listener = 'off'; renderSync(); } });
+    $('refresh').disabled = polling || !mcp;
+    $('scan').disabled = !!scanning;
+  }
+  function showHint(msg) { const h = $('hint'); h.hidden = false; h.innerHTML = msg; }
+
+  // ---- Store: add-only. Existing items are never rewritten, only resolved or reopened. ----
+  async function write(id, patch, create) {
+    if (!db || inflight.has(id)) return;
+    inflight.add(id);
+    try {
+      const ref = db.doc('tasks/' + id);
+      if (create) await ref.set(patch); else await ref.update(patch);
+    } catch (e) {
+      if (!(e && e.code === 'invalid_argument' && !create)) showHint('Could not save a change. Only the owner of this page can write to it.');
+    } finally { inflight.delete(id); }
+  }
+  function add(id, fields) {
+    if (tasks.has(id) || inflight.has(id)) return;
+    tasks.set(id, { ...fields, id, open: true, _pending: true }); // optimistic, so one pull never creates twice
+    return write(id, { ...fields, id, open: true, resolved_at: null, resolved_by: null, first_seen: nowIso(), updated_at: nowIso() }, true);
+  }
+  function resolve(id, by) {
+    const cur = tasks.get(id);
+    if (!cur || !cur.open) return;
+    return write(id, { open: false, resolved_at: nowIso(), resolved_by: by }, false);
+  }
+  function reopen(id) {
+    const cur = tasks.get(id);
+    if (!cur || cur.open) return;
+    return write(id, { open: true, resolved_at: null, resolved_by: null }, false);
+  }
+  function markSeen(id) {
+    const cur = tasks.get(id);
+    if (!cur) return;
+    return write(id, { attention: false, seen_at: nowIso() }, false);
+  }
+  function sweepMeetings() {
+    const now = Date.now();
+    for (const t of tasks.values()) {
+      if (t.open && t.source === 'calendar' && t.end_at && new Date(t.end_at).getTime() <= now) resolve(t.id, 'ended');
+    }
+  }
+  async function readCursors() {
+    try { const s = await db.doc('meta/cursors').get(); return s.exists ? s.data() : {}; } catch (e) { return {}; }
+  }
+  async function saveCursors(patch) {
+    try {
+      const ref = db.doc('meta/cursors');
+      const s = await ref.get();
+      if (s.exists) await ref.update(patch); else await ref.set(patch);
+    } catch (e) { /* cursors are an optimisation; a lost write only widens the next pull */ }
+  }
+
+  // ---- Connectors: cursor-based pulls -------------------------------------
+  // User groups I belong to: meta/slack_groups {ids: [S...], handles: {S...: 'backend-team'}}, refreshed by the collector from usergroups.list.
+  let slackGroups = { ids: [], handles: {} };
+  async function readSlackGroups() {
+    try {
+      const snap = await db.doc('meta/slack_groups').get();
+      if (!snap.exists) return;
+      const d = snap.data() || {};
+      slackGroups = { ids: Array.isArray(d.ids) ? d.ids.filter((x) => /^S[A-Z0-9]+$/.test(x)) : [], handles: d.handles || {} };
+    } catch (e) { /* no groups doc yet: direct mentions only */ }
+  }
+  // Catalog of every user group seen in message text: meta/slack_group_catalog {groups: {S…: {handle, verified, seen, last_seen, channels, samples, attempts}}}.
+  // Ids come from the text itself; the handle is recovered by guessing (Haiku) and confirming each guess with a Slack search pinned to one message.
+  let catalog = { groups: {} };
+  let catalogDirty = false, discovering = false, lastScanAt = 0, sampleOff = false;
+  const GROUP_RE = /<(?:@|!subteam\^)(S[A-Z0-9]+)(?:\|[^>]+)?>/g;
+  const groupHandle = (id) => '@' + (slackGroups.handles[id] || (catalog.groups[id] && catalog.groups[id].handle) || id);
+  let sweepHint = null;   // the keyword of the sweep that is running; it is a token of the handle of any group it surfaces
+  // Slack search stems and fuzzes plain words, so a candidate token counts as "in the text" when any word shares a 4+ letter prefix with it.
+  const wordIn = (text, w) => { w = String(w || '').toLowerCase(); if (!w) return false; const words = String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); return words.some((t) => t === w || (w.length >= 4 && t.length >= 4 && (t.startsWith(w) || w.startsWith(t)))); };
+  function noteGroup(id, smp) {
+    const g = catalog.groups[id] || (catalog.groups[id] = { handle: null, verified: false, seen: 0, last_seen: null, channels: {}, samples: [], seen_ts: [], attempts: 0, hints: {} });
+    if (!Array.isArray(g.samples)) g.samples = []; if (!g.channels) g.channels = {};
+    if (smp.hint) { g.hints = g.hints || {}; if (!g.hints[smp.hint]) { g.hints[smp.hint] = 1; g.attempts = 0; catalogDirty = true; } }
+    if ((g.seen_ts || (g.seen_ts = [])).includes(smp.ts)) return;
+    g.seen_ts.unshift(smp.ts); g.seen_ts.length = Math.min(g.seen_ts.length, 40);
+    g.seen += 1;
+    if (!g.last_seen || smp.at > g.last_seen) g.last_seen = smp.at;
+    g.channels[smp.channel] = (g.channels[smp.channel] || 0) + 1;
+    g.samples.unshift({ ts: smp.ts, text: smp.text, channel: smp.channel, solo: !!smp.solo });
+    g.samples.sort((a, b) => (b.solo - a.solo) || b.ts.localeCompare(a.ts));   // messages that tag only this group first: they are the ones a handle can be confirmed on
+    g.samples.length = Math.min(g.samples.length, 4);
+    if (!g.handle) g.attempts = 0;   // new evidence: worth another naming pass
+    catalogDirty = true;
+  }
+  async function saveCatalog() {
+    if (!catalogDirty || !db) return;
+    catalogDirty = false;
+    try { await db.doc('meta/slack_group_catalog').set({ groups: catalog.groups, updated_at: nowIso() }); } catch (e) { catalogDirty = true; }
+  }
+  const payloadText = (r) => typeof r.payload === 'string' ? r.payload : (r.payload && (r.payload.results || '')) || '';
+  const payloadCursor = (r) => { const t = typeof r.payload === 'string' ? r.payload : JSON.stringify(r.payload || ''); const m = t.match(/cursor `([^`]+)`/); return m ? m[1] : null; };
+  // Recent messages in my channels plus "cc" posts, where groups usually get tagged. Harvests ids only; parseSlack does the extraction.
+  const GENERIC = new Set(['customer', 'squad', 'ask', 'team', 'the', 'and', 'for', 'project', 'channel', 'general', 'random', 'dev', 'em', 'ems', 'new', 'old']);
+  const SEED_WORDS = ['cc', 'team', 'oncall', 'on-call', 'leads', 'sdk', 'ios', 'android', 'backend', 'frontend', 'devops', 'infra', 'qa', 'support', 'security', 'mobile', 'web', 'data', 'ai', 'platform', 'core'];
+  function scanSeeds() {
+    const chans = new Set();
+    for (const t of tasks.values()) if (t.source === 'slack') { const m = (t.context || '').match(/^#([\w-]+)/); if (m) chans.add(m[1]); }
+    for (const g of Object.values(catalog.groups)) for (const c of Object.keys(g.channels)) if (c.startsWith('#')) chans.add(c.slice(1));
+    const toks = [...chans].flatMap((c) => c.toLowerCase().split(/[-_]/)).filter((t) => t.length > 2 && !GENERIC.has(t) && /^[a-z0-9-]+$/.test(t));
+    const extra = (Array.isArray(cfg.slack_seed_words) ? cfg.slack_seed_words : []).map((w) => String(w).toLowerCase()).filter((w) => /^[a-z0-9-]{2,30}$/.test(w));
+    return [...new Set([...SEED_WORDS, ...extra, ...toks])].slice(0, 32);
+  }
+  async function discoverGroups(force) {
+    if (!mcp || !db || discovering) return;
+    const deep = force || !Object.keys(catalog.groups).length;
+    if (!force && Date.now() - lastScanAt < 10 * 60 * 1000) return renderSuggestions();
+    discovering = true; $('grouprescan').disabled = true;
+    groupStatus(deep ? 'Deep scan: searching three months of your channels for group tags…' : 'Scanning recent messages in your channels for group tags…');
+    try {
+      const base = { natural_language_query: '', only_my_channels: true, sort: 'timestamp', sort_dir: 'desc', limit: 20, include_context: false, response_format: 'detailed' };
+      const recent = `after:${ymd(new Date(Date.now() - 14 * 24 * 3600 * 1000))}`;
+      let cursor = null;
+      sweepHint = null;
+      for (let i = 0; i < 3; i++) {
+        const r = await mcp.callTool('Slack', 'slack_search_public_and_private', { ...base, filters: recent, keywords: [], ...(cursor ? { cursor } : {}) }, { cache: false });
+        parseSlack(r.payload);
+        cursor = payloadCursor(r);
+        if (!cursor) break;
+      }
+      if (deep) {
+        const old = `after:${ymd(new Date(Date.now() - 90 * 24 * 3600 * 1000))}`;
+        const seeds = scanSeeds();
+        for (let i = 0; i < seeds.length; i++) {
+          const w = seeds[i];
+          sweepHint = w === 'cc' ? null : w;
+          groupStatus(`Deep scan ${i + 1}/${seeds.length}: "${w}"…`);
+          try { const r = await mcp.callTool('Slack', 'slack_search_public_and_private', { ...base, filters: old, keywords: [w] }, { cache: false }); parseSlack(r.payload); }
+          catch (e) { if (e && e.code === 'rate_limited') break; }
+        }
+      } else {
+        cursor = null; sweepHint = null;
+        for (let i = 0; i < 2; i++) {
+          const r = await mcp.callTool('Slack', 'slack_search_public_and_private', { ...base, filters: recent, keywords: ['cc'], ...(cursor ? { cursor } : {}) }, { cache: false });
+          parseSlack(r.payload);
+          cursor = payloadCursor(r);
+          if (!cursor) break;
+        }
+      }
+      sweepHint = null;
+      lastScanAt = Date.now();
+      await nameGroups();
+      await saveCatalog();
+      renderGroups(); renderSuggestions();
+      const all = Object.values(catalog.groups), un = all.filter((g) => !g.handle).length;
+      groupStatus(`${all.length} group${all.length === 1 ? '' : 's'} tagged in your channels${un ? `, ${un} not named yet (Rescan names more)` : ''}. Groups you are not in appear too: pick the ones you belong to, or type a handle.`);
+    } catch (e) {
+      groupStatus(`Scan failed: ${(e && (e.message || e.code)) || 'error'}`, true);
+    } finally { discovering = false; $('grouprescan').disabled = false; sweepHint = null; }
+  }
+  // One quick Claude call proposes handles for the unnamed ids; each guess is confirmed by searching it inside a 4-second window around a message that carries the id.
+  const toks = (h) => h.split(/[-_.]/).filter(Boolean);
+  // Slack matches a tag on any token of its handle, so a confirmation needs: a message that tags only this group, a candidate whose words are not plain text in that message, and the longest candidate that still matches.
+  function candidatesFor(id, g, guesses) {
+    const hints = Object.keys(g.hints || {});
+    const chans = Object.keys(g.channels).filter((c) => c.startsWith('#')).map((c) => c.slice(1));
+    const chanToks = [...new Set(chans.flatMap((c) => c.split(/[-_]/)).filter((t) => t.length > 2 && !GENERIC.has(t)))];
+    const raw = [...(guesses && Array.isArray(guesses[id]) ? guesses[id] : [])];
+    for (const h of hints) { raw.push(h, h + '-team', 'team-' + h); for (const t of chanToks) if (t !== h) raw.push(h + '-' + t, t + '-' + h); }
+    raw.push(...chans, ...chans.map((c) => c + '-team'), ...chanToks);
+    const norm = [...new Set(raw.map((x) => String(x).trim().replace(/^@/, '').toLowerCase()).filter((x) => /^[a-z0-9][a-z0-9_.-]{1,40}$/.test(x)))];
+    const keep = hints.length ? norm.filter((c) => hints.every((h) => toks(c).includes(h))) : norm;
+    return (keep.length ? keep : norm).sort((a, b) => toks(b).length - toks(a).length || a.localeCompare(b)).slice(0, 10);
+  }
+  const pickSample = (g, cand) => g.samples.find((s) => s.solo && !toks(cand).some((t) => wordIn(s.text, t)));
+  async function nameGroups() {
+    const todo = Object.entries(catalog.groups).filter(([, g]) => !g.handle && (g.attempts || 0) < 2 && g.samples.some((x) => x.solo)).slice(0, 4);
+    if (!todo.length) return;
+    let guesses = {};
+    const sample = sampleOff ? null : await (window.claude && window.claude.use ? window.claude.use('sample') : Promise.resolve(null));
+    if (sample) {
+      const known = Object.values(catalog.groups).filter((g) => g.handle && g.verified).map((g) => g.handle).slice(0, 12);
+      const brief = todo.map(([id, g]) => `${id}: channels ${Object.keys(g.channels).join(', ')}; ${Object.keys(g.hints || {}).length ? 'the handle contains the word(s): ' + Object.keys(g.hints).join(', ') + '; ' : ''}messages: ${g.samples.map((x) => JSON.stringify(x.text.slice(0, 200))).join(' | ')}`).join('\n');
+      try {
+        guesses = await sample.json(`Each line is a Slack user group id, the channels it was tagged in, sometimes words its handle is known to contain, and message snippets where "@[group]" marks the tag. Guess the group's Slack handle: lowercase letters, digits, hyphens or underscores. ${known.length ? 'Handles already confirmed in this workspace, to copy the naming style: ' + known.join(', ') + '. ' : ''}Think about who the message is addressed to (a squad, a platform team, an on-call rotation, a role) and vary the second word widely. Reply with only a JSON object mapping each id to an array of up to 10 candidate handles, most likely first.\n\n` + brief, { modelTier: 'quick' });
+      } catch (e) { if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled' || e.code === 'not_declared')) sampleOff = true; }
+    }
+    for (const [id, g] of todo) {
+      let found = null;
+      for (const c of candidatesFor(id, g, guesses)) {
+        const smp = pickSample(g, c);
+        if (!smp) continue;
+        try { if (await verifyHandle(id, c, smp)) { found = c; break; } } catch (e) { break; }
+      }
+      if (found) { g.handle = found; g.verified = true; if (slackGroups.ids.includes(id) && !slackGroups.handles[id]) saveGroups(slackGroups.ids, { ...slackGroups.handles, [id]: found }); }
+      else g.attempts = (g.attempts || 0) + 1;
+      catalogDirty = true;
+      renderSuggestions();
+    }
+  }
+  async function verifyHandle(id, handle, smp) {
+    const t = Math.floor(parseFloat(smp.ts));
+    const r = await mcp.callTool('Slack', 'slack_search_public_and_private', { natural_language_query: '', keywords: [handle], after: String(t - 2), before: String(t + 2), sort: 'timestamp', limit: 5, include_context: false, response_format: 'detailed' }, { cache: false });
+    const text = payloadText(r);
+    return text.includes(`Message_ts: ${smp.ts}`) && text.includes(id);
+  }
+  function renderSuggestions() {
+    const el = $('groupsugg');
+    if (!el) return;
+    const q = ($('groupinput').value || '').trim().replace(/^@/, '').toLowerCase();
+    const rows = Object.entries(catalog.groups)
+      .filter(([id]) => !slackGroups.ids.includes(id))
+      .filter(([id, g]) => !q || (g.handle || '').includes(q) || id.toLowerCase().includes(q) || Object.keys(g.channels).some((c) => c.toLowerCase().includes(q)))
+      .sort((a, b) => (b[1].last_seen || '').localeCompare(a[1].last_seen || ''))
+      .slice(0, 8);
+    el.innerHTML = rows.map(([id, g]) => {
+      const smp = (g.samples && g.samples[0]) || null;
+      const quote = smp ? esc(smp.text.replace('@[group]', '@…').slice(0, 90)) + (smp.text.length > 90 ? '…' : '') : '';
+      const label = g.handle ? '@' + g.handle : (Object.keys(g.hints || {}).length ? 'unnamed · has "' + Object.keys(g.hints).join('", "') + '"' : 'unnamed group');
+      return `<div class="sugg-row"><button type="button" class="sugg" data-addgroup="${esc(id)}" title="${esc(id)} · track mentions of this group"><b>${esc(label)}</b><span>${g.seen}× · ${esc(Object.keys(g.channels).slice(0, 3).join(', '))} · last ${ago(g.last_seen)}</span>${quote ? `<i>${quote}</i>` : ''}</button>${g.handle ? '' : `<button type="button" class="namegroup" data-namegroup="${esc(id)}" title="You know this group's handle? Type it.">name it</button>`}</div>`;
+    }).join('');
+    el.hidden = rows.length === 0;
+  }
+  async function addKnownGroup(id) {
+    const g = catalog.groups[id];
+    if (!g || !db) return;
+    await saveGroups([...slackGroups.ids, id], { ...slackGroups.handles, ...(g.handle ? { [id]: g.handle } : {}) });
+    renderSuggestions();
+    groupStatus(`Tracking ${groupHandle(id)}. Pulling its recent mentions…`);
+    await saveCursors({ slack_groups: nowS() - FIRST_LOOKBACK_S });
+    await pullAll();
+    groupStatus(`Tracking ${groupHandle(id)}.`);
+  }
+  function setGroups(d) {
+    slackGroups = { ids: Array.isArray(d && d.ids) ? d.ids.filter((x) => /^S[A-Z0-9]+$/.test(x)) : [], handles: { ...((d && d.handles) || {}) } };
+    renderGroups();
+  }
+  function renderGroups() {
+    const el = $('groupchips');
+    if (!el) return;
+    el.innerHTML = slackGroups.ids.map((id) => `<span class="chip" title="${esc(id)}">${esc(groupHandle(id))}<button type="button" data-rmgroup="${esc(id)}" title="Stop tracking this group">×</button></span>`).join('');
+    renderSync();
+  }
+  function groupStatus(msg, bad) { const st = $('groupstatus'); st.textContent = msg; st.classList.toggle('bad', !!bad); }
+  async function saveGroups(ids, handles) {
+    await db.doc('meta/slack_groups').set({ ids, handles, updated_at: nowIso(), source: 'page' });
+    setGroups({ ids, handles });
+  }
+  // A group mention is stored as <@S…> in message text. Searching the handle returns messages that mention it; the most frequent group id wins.
+  async function resolveGroupId(handle) {
+    if (/^S[A-Z0-9]{6,}$/.test(handle)) return handle;
+    const r = await mcp.callTool('Slack', 'slack_search_public_and_private', { natural_language_query: '', keywords: [handle], sort: 'timestamp', sort_dir: 'desc', limit: 20, include_context: false, response_format: 'detailed' }, { cache: false });
+    const text = typeof r.payload === 'string' ? r.payload : (r.payload && r.payload.results) || '';
+    const counts = {};
+    for (const m of text.matchAll(/<(?:@|!subteam\^)(S[A-Z0-9]+)/g)) counts[m[1]] = (counts[m[1]] || 0) + 1;
+    const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return best ? best[0] : null;
+  }
+  let namingId = null;
+  function startNaming(id) {
+    namingId = id;
+    const input = $('groupinput');
+    input.placeholder = `handle for ${id} (no @)`;
+    input.value = '';
+    input.focus();
+    const g = catalog.groups[id];
+    groupStatus(`Type the handle of the group tagged in ${g && g.samples[0] ? g.samples[0].channel : 'that message'}, then press Enter. Esc cancels.`);
+  }
+  function stopNaming() { namingId = null; $('groupinput').placeholder = 'add @handle or S… id'; }
+  async function addGroup() {
+    const input = $('groupinput');
+    const raw = input.value.trim().replace(/^@/, '').replace(/^<!subteam\^|>$/g, '');
+    if (!raw) return;
+    if (!mcp || !db) return groupStatus('Groups can only be added inside the claude.ai viewer.', true);
+    $('groupadd').disabled = true;
+    if (namingId && catalog.groups[namingId]) {
+      const id = namingId, g = catalog.groups[id], handle = raw.toLowerCase();
+      try {
+        const smp = pickSample(g, handle);
+        let ok = false;
+        if (smp) { try { ok = await verifyHandle(id, handle, smp); } catch (e) { ok = false; } }
+        g.handle = handle; g.verified = ok; catalogDirty = true;
+        await saveCatalog();
+        stopNaming(); input.value = '';
+        groupStatus(ok ? `@${handle} confirmed for ${id}. Click it below to track it.` : `Saved @${handle} for ${id} (Slack could not confirm it; the mentions still track by id).`);
+        renderSuggestions(); renderGroups();
+      } finally { $('groupadd').disabled = false; }
+      return;
+    }
+    groupStatus(`Looking up @${raw}…`);
+    try {
+      const id = await resolveGroupId(raw);
+      if (!id) return groupStatus(`No message mentioning @${raw} found. Check the handle, or paste the group id (S…) instead.`, true);
+      if (slackGroups.ids.includes(id)) return groupStatus(`@${slackGroups.handles[id] || raw} is already tracked.`);
+      const handle = /^S[A-Z0-9]{6,}$/.test(raw) ? (slackGroups.handles[id] || raw) : raw;
+      await saveGroups([...slackGroups.ids, id], { ...slackGroups.handles, [id]: handle });
+      input.value = '';
+      if (catalog.groups[id] && !catalog.groups[id].handle) { catalog.groups[id].handle = handle; catalog.groups[id].verified = true; catalogDirty = true; }
+      groupStatus(`Added @${handle}. Pulling its recent mentions…`);
+      await saveCursors({ slack_groups: nowS() - FIRST_LOOKBACK_S });   // let the next pull look back for this group; ids dedupe the others
+      await pullAll();
+      groupStatus(`Tracking @${handle}.`);
+      renderSuggestions(); discoverGroups(true);
+    } catch (e) {
+      groupStatus(`Slack lookup failed: ${(e && (e.message || e.code)) || 'error'}`, true);
+    } finally { $('groupadd').disabled = false; }
+  }
+  async function removeGroup(id) {
+    if (!db) return;
+    const handles = { ...slackGroups.handles }; delete handles[id];
+    await saveGroups(slackGroups.ids.filter((x) => x !== id), handles);
+    groupStatus('Removed. Existing cards stay until you close them.');
+    renderSuggestions(); discoverGroups(true);
+  }
+  function slackClean(text) {
+    return String(text || '')
+      .replace(/<!subteam\^(S[A-Z0-9]+)(?:\|[^>]+)?>/g, (_, id) => groupHandle(id))
+      .replace(/<@(S[A-Z0-9]+)(?:\|[^>]+)?>/g, (_, id) => groupHandle(id))
+      .replace(/<@([A-Z0-9]+)\|([^>]+)>/g, '@$2')
+      .replace(/<@([A-Z0-9]+)>/g, '@$1')
+      .replace(/<#[A-Z0-9]+\|([^>]+)>/g, '#$1')
+      .replace(/<(https?:[^|>]+)\|([^>]+)>/g, '$2')
+      .replace(/<(https?:[^>]+)>/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function parseSlack(payload) {
+    const text = typeof payload === 'string' ? payload : (payload && payload.results) || '';
+    const out = [];
+    for (const block of text.split(/^### Result \d+ of \d+\s*$/m).slice(1)) {
+      const g = (re) => { const m = block.match(re); return m ? m[1].trim() : ''; };
+      const channel = g(/^Channel:\s*(.+?)\s*\(ID:/m);
+      const channelId = g(/^Channel:.*\(ID:\s*([A-Z0-9]+)\)/m);
+      const from = g(/^From:\s*([^<(\n]+)/m);
+      const fromId = g(/^From:.*\(ID:\s*([A-Z0-9]+)\)/m);
+      const ts = g(/^Message_ts:\s*([\d.]+)/m);
+      const url = g(/^Permalink:\s*\[link\]\((\S+)\)/m);
+      const body = g(/^Text:\s*\n([\s\S]*?)(?:\n---|\s*$)/m);
+      if (!channelId || !ts) continue;
+      const gids = [...new Set([...body.matchAll(GROUP_RE)].map((gm) => gm[1]))];
+      for (const gid of gids) {
+        const masked = body.replace(new RegExp(`<(?:@|!subteam\\^)${gid}(?:\\|[^>]+)?>`, 'g'), '@[group]');
+        const text = slackClean(masked).slice(0, 400);
+        noteGroup(gid, { ts, at: new Date(parseFloat(ts) * 1000).toISOString(), channel: channel === 'DM' ? 'DM' : channel, text, solo: gids.length === 1, hint: sweepHint && !wordIn(text, sweepHint) ? sweepHint : null });
+      }
+      const msg = slackClean(body);
+      const threadTs = (url.match(/[?&]thread_ts=([\d.]+)/) || [])[1] || ts;
+      // One card per thread; a DM conversation is one thread.
+      const key = channelId.startsWith('D') ? channelId : `${channelId}-${threadTs.replace('.', '')}`;
+      out.push({
+        id: `slack-${key}`, ts: parseFloat(ts), fromId, msg_ts: ts,
+        source: 'slack',
+        title: msg.length > 160 ? msg.slice(0, 157) + '…' : (msg || '(no text)'),
+        url,
+        context: `${channel === 'DM' ? 'DM' : channel} · ${from}`,
+        created_at: new Date(parseFloat(ts) * 1000).toISOString(),
+      });
+    }
+    return out;
+  }
+  // My Slack user id: from meta/config, else read once from my own Slack profile and saved there.
+  let slackMe = null;
+  async function mySlackId() {
+    if (/^[UW][A-Z0-9]{6,}$/.test(cfg.slack_user_id || '')) return cfg.slack_user_id;
+    if (slackMe) return slackMe;
+    const r = await mcp.callTool('Slack', 'slack_read_user_profile', { response_format: 'detailed' }, { cache: false });
+    const p = r.payload;
+    const text = typeof p === 'string' ? p : JSON.stringify(p || '');
+    const m = text.match(/User ID:\s*([UW][A-Z0-9]{6,})/);
+    if (!m) throw { code: 'tool_error', server: 'slack', message: 'could not read your Slack user id; set slack_user_id in meta/config' };
+    slackMe = m[1];
+    saveConfig({ slack_user_id: slackMe });
+    return slackMe;
+  }
+  async function saveConfig(patch) {
+    cfg = { ...cfg, ...patch };
+    try {
+      const ref = db.doc('meta/config');
+      const snap = await ref.get();
+      if (snap.exists) await ref.update(patch); else await ref.set(patch);
+    } catch (e) { /* kept in memory for this page load */ }
+  }
+  async function pullSlack(cursors) {
+    const startS = nowS();
+    const base = { natural_language_query: '', sort: 'timestamp', sort_dir: 'desc', limit: 20, include_context: false, response_format: 'detailed' };
+    const since = (key) => String(Math.max(0, (cursors[key] || (startS - FIRST_LOOKBACK_S)) - OVERLAP_S));
+    await readSlackGroups();
+    const me = await mySlackId();
+    // A group mention is stored as <@S...> in the message text; searching the group id finds it.
+    const [m, d, ...gs] = await Promise.all([
+      mcp.callTool('Slack', 'slack_search_public_and_private', { ...base, keywords: [`<@${me}>`], after: since('slack_mentions') }, { cache: false }),
+      mcp.callTool('Slack', 'slack_search_public_and_private', { ...base, keywords: [], filters: 'is:dm', channel_types: 'im', after: since('slack_dms') }, { cache: false }),
+      ...slackGroups.ids.map((gid) => mcp.callTool('Slack', 'slack_search_public_and_private', { ...base, keywords: [gid], after: since('slack_groups') }, { cache: false })),
+    ]);
+    let maxM = cursors.slack_mentions || 0, maxD = cursors.slack_dms || 0, maxG = cursors.slack_groups || 0;
+    for (const it of parseSlack(m.payload)) { maxM = Math.max(maxM, Math.floor(it.ts)); if (it.fromId !== me) upsertSlack(it); }
+    for (const it of parseSlack(d.payload)) { maxD = Math.max(maxD, Math.floor(it.ts)); if (it.fromId !== me) upsertSlack(it); }
+    gs.forEach((g, i) => {
+      const via = groupHandle(slackGroups.ids[i]);
+      for (const it of parseSlack(g.payload)) {
+        maxG = Math.max(maxG, Math.floor(it.ts));
+        if (it.fromId === me) continue;
+        if (!it.context.includes(via)) it.context += ' · ' + via;
+        upsertSlack({ ...it, via });
+      }
+    });
+    fresh.slack = { at: Date.now() };
+    const out = { slack_mentions: Math.max(maxM, startS), slack_dms: Math.max(maxD, startS) };
+    if (slackGroups.ids.length) out.slack_groups = Math.max(maxG, startS);
+    return out;
+  }
+  const strip = ({ ts, fromId, ...rest }) => rest;
+  // Thread card: first mention creates it; a newer mention replaces the shown message, bumps the count and reopens it.
+  function upsertSlack(it) {
+    const cur = tasks.get(it.id);
+    if (!cur) { const f = strip(it); return add(it.id, { ...f, mentions: 1, first_title: f.title, first_url: f.url, first_at: f.created_at }); }
+    if (parseFloat(cur.msg_ts || '0') >= it.ts) return;
+    const fields = strip(it);
+    return write(it.id, { title: fields.title, url: fields.url, context: fields.context, created_at: fields.created_at, msg_ts: fields.msg_ts,
+      mentions: (cur.mentions || 1) + 1, open: true, resolved_at: null, resolved_by: null, updated_at: nowIso() }, false);
+  }
+
+  async function pullLinear(cursors) {
+    const start = new Date();
+    const sinceMs = cursors.linear ? new Date(cursors.linear).getTime() - OVERLAP_S * 1000 : Date.now() - 30 * 24 * 3600 * 1000;
+    const r = await mcp.callTool('Linear', 'list_issues', {
+      assignee: 'me', limit: 100, orderBy: 'updatedAt', updatedAt: new Date(sinceMs).toISOString(),
+      fields: ['id', 'title', 'url', 'status', 'statusType', 'team', 'createdAt', 'updatedAt'],
+    }, { cache: false });
+    const issues = (r.payload && r.payload.issues) || [];
+    for (const is of issues) {
+      const id = `linear-${is.id}`;
+      // Closed in Linear: Done/Canceled/Duplicate status types, or a "Pending Feedback" status (the ball is in someone else's court).
+      const closedType = is.statusType === 'completed' || is.statusType === 'canceled' || is.statusType === 'duplicate';
+      const pendingFeedback = /pending\s*feedback/i.test(is.status || '');
+      const cur = tasks.get(id);
+      if (closedType || pendingFeedback) {
+        if (cur && cur.open && linearMention(cur)) { if (!cur.mention_only) write(id, { mention_only: true, updated_at: nowIso() }, false); }
+        else resolve(id, pendingFeedback ? 'pending-feedback' : 'linear');
+        continue;
+      }
+      if (cur && cur.mention_only) { write(id, { mention_only: false, context: `${is.team || ''}${is.team ? ' · ' : ''}${is.status || ''}`.trim(), state: is.status || '', updated_at: nowIso() }, false); continue; }
+      add(id, {
+        source: 'linear', title: `${is.id} ${is.title}`, url: is.url,
+        context: `${is.team || ''}${is.team ? ' · ' : ''}${is.status || ''}`.trim(),
+        created_at: is.createdAt || nowIso(), state: is.status || '',
+      });
+    }
+    await pullLinearMentions(cursors);
+    await checkUnseenLinear(new Set(issues.map((is) => `linear-${is.id}`)));
+    // Cards created while already in a closing status never come back through the cursor pull: apply the rule to what we stored.
+    for (const t of tasks.values()) {
+      if (t.open && t.source === 'linear' && !linearMention(t) && /pending\s*feedback/i.test(t.state || '')) resolve(t.id, 'pending-feedback');
+    }
+    fresh.linear = { at: Date.now() };
+    return { linear: start.toISOString(), linear_mentions: start.toISOString() };
+  }
+
+  // Cards the assigned pull no longer returns: closed after a reassignment, or handed to someone else. Ask Linear about each, a few per pull.
+  const linearChecked = new Map();
+  let linearMe = null;
+  async function myLinearId() {
+    if (linearMe) return linearMe;
+    try { const r = await mcp.callTool('Linear', 'whoami', {}, { cache: false }); linearMe = r.payload && r.payload.user && r.payload.user.id || null; } catch (e) { linearMe = null; }
+    return linearMe;
+  }
+  async function checkUnseenLinear(seen) {
+    const due = [...tasks.values()].filter((t) => t.open && t.source === 'linear' && !t._pending && !t.mention_only && !seen.has(t.id))
+      .sort((a, b) => (linearChecked.get(a.id) || 0) - (linearChecked.get(b.id) || 0)).slice(0, 10);
+    if (!due.length) return;
+    const me = await myLinearId();
+    for (const t of due) {
+      linearChecked.set(t.id, Date.now());
+      let is;
+      try { is = (await mcp.callTool('Linear', 'get_issue', { id: t.id.replace(/^linear-/, ''), fields: ['id', 'status', 'statusType', 'assigneeId'] }, { cache: false })).payload; } catch (e) { continue; }
+      if (!is) continue;
+      const closed = is.statusType === 'completed' || is.statusType === 'canceled' || is.statusType === 'duplicate';
+      const pendingFeedback = /pending\s*feedback/i.test(is.status || '');
+      if (closed || pendingFeedback) {
+        if (linearMention(t)) write(t.id, { mention_only: true, updated_at: nowIso() }, false);
+        else resolve(t.id, pendingFeedback ? 'pending-feedback' : 'linear');
+        continue;
+      }
+      if (!me) continue;                    // never on my list because of assignment, or I cannot tell who I am
+      if (is.assigneeId === me) continue;                     // still mine, just not updated since the cursor
+      // Handed to someone else (or unassigned). A mention keeps the card alive as a mention card; otherwise it is no longer my loop.
+      const mentioned = Array.isArray(t.tags) && t.tags.includes('mention');
+      if (mentioned) write(t.id, { mention_only: true, context: `${t.context || ''}${t.context ? ' · ' : ''}reassigned`, updated_at: nowIso() }, false);
+      else resolve(t.id, 'reassigned');
+    }
+  }
+
+  // Linear inbox: anyone can @ me on an issue I am not assigned to. One card per issue; a mention on an existing card adds the tag and reopens it.
+  async function pullLinearMentions(cursors) {
+    const since = cursors.linear_mentions
+      ? new Date(new Date(cursors.linear_mentions).getTime() - OVERLAP_S * 1000).toISOString()
+      : new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+    let cursor = null, pages = 0, older = false;
+    do {
+      const r = await mcp.callTool('Linear', 'get_notifications', { limit: 100, ...(cursor ? { cursor } : {}) }, { cache: false });
+      const p = r.payload || {};
+      for (const nt of p.notifications || []) {
+        if ((nt.createdAt || '') < since) { older = true; continue; }
+        if (nt.category !== 'mentions' && !/Mention$/.test(nt.type || '')) continue;
+        const key = (String(nt.url || '').match(/\/issue\/([A-Z0-9]+-\d+)/) || [])[1];
+        if (!key) continue;
+        const id = `linear-${key}`;
+        const cur = tasks.get(id);
+        if (nt.archivedAt || nt.snoozedUntilAt) { if (cur && cur.mention_only) resolve(id, 'linear'); continue; }
+        const m = String(nt.subtitle || '').match(/^(.*?) mentioned you:\s*([\s\S]*)$/);
+        const by = m ? m[1].trim() : '';
+        const text = (m ? m[2] : String(nt.subtitle || '')).replace(/@[A-Z][\w.-]*(?: [A-Z][\w.-]*)?/g, '').replace(/\s+/g, ' ').trim().slice(0, 140);
+        if (!cur) {
+          add(id, { source: 'linear', title: `${key} ${nt.title || ''}`.trim(), url: nt.url, context: '', created_at: nt.createdAt || nowIso(),
+            tags: ['mention'], mention_only: true, mention_at: nt.createdAt, mention_by: by, mention_text: text, mentions: 1 });
+          continue;
+        }
+        if ((cur.mention_at || '') >= (nt.createdAt || '')) continue;
+        const tags = Array.isArray(cur.tags) ? cur.tags : [];
+        write(id, { tags: tags.includes('mention') ? tags : [...tags, 'mention'], mention_at: nt.createdAt, mention_by: by, mention_text: text,
+          mentions: (cur.mentions || 0) + 1, open: true, resolved_at: null, resolved_by: null, updated_at: nowIso() }, false);
+      }
+      cursor = p.hasNextPage && !older && ++pages < 3 ? p.cursor : null;
+    } while (cursor);
+  }
+
+  async function pullCalendar() {
+    const d0 = startOfToday(); const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
+    const r = await mcp.callTool('Google Calendar', 'list_events', { startTime: localIso(d0), endTime: localIso(d1), pageSize: 50, orderBy: 'startTime' }, { cache: false });
+    const p = r.payload || {};
+    const events = p.events || p.items || (Array.isArray(p) ? p : []);
+    for (const e of events) {
+      const start = e.start && (e.start.dateTime || e.start.date_time);
+      const end = e.end && (e.end.dateTime || e.end.date_time);
+      if (!e.id || !start || !end) continue;               // all-day events are skipped
+      const me = (e.attendees || []).find((a) => a.self);
+      const rsvp = (me && me.responseStatus) || '';      // needsAction | declined | tentative | accepted | '' (my own event)
+      const id = `cal-${String(e.id).replace(/[^A-Za-z0-9_\-.~:@+]/g, '_')}`;
+      if (e.status === 'cancelled') { resolve(id, 'cancelled'); continue; }
+      const cur = tasks.get(id);
+      if (cur) { if ((cur.rsvp || '') !== rsvp) write(id, { rsvp, updated_at: nowIso() }, false); continue; }
+      if (new Date(end).getTime() <= Date.now()) continue;  // already over: never show
+      const where = e.hangoutLink || (e.conferenceData && e.conferenceData.entryPoints && e.conferenceData.entryPoints[0] && e.conferenceData.entryPoints[0].uri) || e.location || '';
+      add(id, {
+        source: 'calendar', title: e.summary || '(no title)', url: e.htmlLink || where || '',
+        context: where && where !== e.htmlLink ? where.replace(/^https?:\/\//, '').slice(0, 40) : '',
+        start_at: new Date(start).toISOString(), end_at: new Date(end).toISOString(), created_at: new Date(start).toISOString(), rsvp,
+      });
+    }
+    fresh.calendar = { at: Date.now() };
+    return {};
+  }
+
+  async function pullAll() {
+    if (!mcp || !db || polling) return;
+    polling = true; renderSync();
+    const cursors = await readCursors();
+    const advance = {};
+    const run = async (key, fn) => {
+      try { Object.assign(advance, await fn(cursors)); }
+      catch (e) { fresh[key] = { err: e || { code: 'upstream_error' } }; }
+    };
+    // GitHub and Claude sessions come from the scheduled collector task, not from this page.
+    await Promise.all([run('slack', pullSlack), run('linear', pullLinear), run('calendar', pullCalendar)]);
+    if (Object.keys(advance).length) await saveCursors(advance);
+    await saveCatalog();
+    polling = false;
+    render();
+  }
+
+  // ---- Send a card to Claude ----------------------------------------------
+  function claudeSessions() {
+    return [...tasks.values()].filter((t) => t.open && t.source === 'claude')
+      .sort((a, b) => (b.running ? 1 : 0) - (a.running ? 1 : 0) || (b.last_activity_at || '').localeCompare(a.last_activity_at || ''));
+  }
+  function composerHtml(t) {
+    const id = esc(t.id);
+    const items = claudeSessions().map((c) => `<button type="button" data-go="${id}" data-target="${esc(c.id.replace(/^claude-/, ''))}" title="${esc(c.title)}">${c.running ? '<b class="live">●</b>' : ''}${esc(c.title)}</button>`).join('');
+    return `<div class="composer"><textarea data-note="${id}" rows="2" placeholder="Tell Claude what to do with this (optional). Enter sends it to a new session."></textarea>` +
+      `<div class="gowrap"><button type="button" class="go" data-go="${id}" data-target="new" title="Send to a new Claude session">➤</button>` +
+      `<div class="menu"><div class="mh">Send to</div><button type="button" data-go="${id}" data-target="new"><b>＋</b>New session</button>${items ? '<div class="mh">Open sessions</div>' + items : ''}</div></div></div>`;
+  }
+  function openComposer(id) {
+    if (composing === id) return;
+    composing = id; render();
+    const ta = document.querySelector('textarea[data-note]'); if (ta) ta.focus();
+  }
+  function closeComposer() { composing = null; clearTimeout(closeTimer); render(); }
+  function scheduleClose() {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      const li = document.querySelector('li.composing'), ta = document.querySelector('textarea[data-note]');
+      if ((li && li.matches(':hover')) || (ta && ta.value.trim())) return;   // still over the card, or there is text: keep it
+      closeComposer();
+    }, 500);
+  }
+  function brief(t, target, note) {
+    const lines = ['[open-loops] send-to-claude', `target: ${target}`, `card: ${t.id}`, `source: ${t.source}`, `title: ${t.title || ''}`, `link: ${t.url || ''}`, `context: ${t.context || ''}`];
+    if (t.mention_by) lines.push(`mention: ${t.mention_by}: ${t.mention_text || ''}`);
+    if (t.source === 'calendar' && t.start_at) lines.push(`when: ${t.start_at} – ${t.end_at}`);
+    if (t.source === 'github' && Array.isArray(t.tags)) lines.push(`roles: ${t.tags.join(', ')}`);
+    lines.push(`note: ${note || '(none)'}`);
+    return lines.join('\n');
+  }
+  const sending = new Set();
+  async function sendToClaude(id, target) {
+    const t = tasks.get(id); if (!t) return;
+    if (sending.has(id)) return;
+    if (t.sent_at && Date.now() - Date.parse(t.sent_at) < 5000) return;
+    sending.add(id);
+    try { await sendToClaudeNow(id, target, t); } finally { sending.delete(id); }
+  }
+  async function sendToClaudeNow(id, target, t) {
+    const ta = document.querySelector('textarea[data-note]');
+    const note = (ta && ta.value.trim()) || '';
+    const sess = target !== 'new' ? tasks.get('claude-' + target) : null;
+    const text = brief(t, target, note);
+    const li = document.querySelector(`li[data-id="${CSS.escape(id)}"]`);
+    let delivered = false;
+    if (comments && li) {
+      try {
+        if ((await comments.canSendToClaude()) === 'available') { await comments.sendToClaude({ anchor: await comments.anchorFor(li), text }); delivered = true; }
+      } catch (e) { delivered = false; }
+    }
+    if (delivered) {
+      write(id, { sent_at: nowIso(), sent_target: target, sent_title: sess ? sess.title : '', sent_url: sess ? sess.url : '', updated_at: nowIso() }, false);
+      closeComposer();
+      return;
+    }
+    // Nobody is listening: hand the brief over by clipboard and open the Claude app at the right place.
+    try { await navigator.clipboard.writeText(text); } catch (e) { /* clipboard not granted */ }
+    window.open(sess && sess.url ? sess.url : 'claude://claude.ai/epitaxy', '_blank');
+    showHint('No Claude session is listening right now. The brief is on your clipboard: paste it into the Claude window that just opened.');
+    closeComposer();
+  }
+
+  // The GitHub + sessions collector is a scheduled Claude Code task; the page asks the watching Claude session to run it now.
+  async function requestScan() {
+    const text = `[open-loops] sync-now\nrequested: ${nowIso()}`;
+    let delivered = false;
+    if (comments) {
+      try {
+        if ((await comments.canSendToClaude()) === 'available') { await comments.sendToClaude({ anchor: await comments.anchorFor($('sync')), text }); delivered = true; }
+      } catch (e) { delivered = false; }
+    }
+    if (delivered) { scanRequestedAt = nowIso(); renderSync(); return; }
+    window.open('claude://claude.ai/epitaxy/scheduled', '_blank');
+    showHint('No Claude session is listening right now. In the Claude window that opened, pick "Open Loops collector" and press Run now.');
+  }
+
+  // ---- Events -------------------------------------------------------------
+  app.addEventListener('click', (ev) => {
+    const seen = ev.target.closest('[data-seen]');
+    if (seen) return markSeen(seen.dataset.seen);
+    const link = ev.target.closest('li[data-src="claude"] .t a');
+    if (link) { const li = link.closest('li'); markSeen(li.dataset.id); /* fall through: the link still opens */ }
+    const go = ev.target.closest('[data-go]');
+    if (go) return sendToClaude(go.dataset.go, go.dataset.target);
+    const sb = ev.target.closest('[data-send]');
+    if (sb) { clearTimeout(openTimer); return composing === sb.dataset.send ? closeComposer() : openComposer(sb.dataset.send); }
+    if (composing && !ev.target.closest('li.composing')) { const ta = document.querySelector('textarea[data-note]'); if (!ta || !ta.value.trim()) closeComposer(); }
+    const d = ev.target.closest('[data-done]');
+    if (d) return resolve(d.dataset.done, 'me');
+    const r = ev.target.closest('[data-reopen]');
+    if (r) return reopen(r.dataset.reopen);
+    if (ev.target.id === 'refresh') return pullAll();
+    if (ev.target.id === 'float') return floatOut();
+    if (ev.target.id === 'scan') return requestScan();
+    if (ev.target.id === 'groupsbtn') { const b = $('groupsbox'); b.hidden = !b.hidden; if (!b.hidden) { $('groupinput').focus(); renderSuggestions(); discoverGroups(false); } return; }
+    if (ev.target.id === 'groupadd') return addGroup();
+    if (ev.target.id === 'grouprescan') return discoverGroups(true);
+    const ng = ev.target.closest('[data-namegroup]');
+    if (ng) return startNaming(ng.dataset.namegroup);
+    const ag = ev.target.closest('[data-addgroup]');
+    if (ag) return addKnownGroup(ag.dataset.addgroup);
+    const rm = ev.target.closest('[data-rmgroup]');
+    if (rm) return removeGroup(rm.dataset.rmgroup);
+  });
+  // Hover intent: the composer opens after the pointer has rested on the ✦ button for half a second, so passing over it does nothing.
+  app.addEventListener('mouseover', (ev) => {
+    const sb = ev.target.closest('[data-send]');
+    if (sb) {
+      clearTimeout(closeTimer);
+      if (composing !== sb.dataset.send) { clearTimeout(openTimer); openTimer = setTimeout(() => openComposer(sb.dataset.send), 500); }
+      return;
+    }
+    if (composing && ev.target.closest('li.composing')) clearTimeout(closeTimer);
+  });
+  app.addEventListener('mouseout', (ev) => {
+    const sb = ev.target.closest('[data-send]');
+    if (sb && !(ev.relatedTarget && sb.contains(ev.relatedTarget))) clearTimeout(openTimer);
+    if (!composing) return;
+    const li = ev.target.closest('li.composing'); if (!li) return;
+    if (ev.relatedTarget && li.contains(ev.relatedTarget)) return;
+    scheduleClose();
+  });
+  app.addEventListener('keydown', (ev) => {
+    if (ev.target.dataset && ev.target.dataset.note) {
+      if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); sendToClaude(ev.target.dataset.note, 'new'); }
+      if (ev.key === 'Escape') closeComposer();
+      return;
+    }
+    if (ev.target.id !== 'groupinput') return;
+    if (ev.key === 'Enter') { ev.preventDefault(); addGroup(); }
+    if (ev.key === 'Escape' && namingId) { stopNaming(); groupStatus('Cancelled.'); }
+  });
+  app.addEventListener('input', (ev) => { if (ev.target.id === 'groupinput') renderSuggestions(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pullAll(); });
+
+  // ---- Floating window ----------------------------------------------------
+  async function floatOut() {
+    const pipApi = window.documentPictureInPicture;
+    if (pipApi && !pipWin) {
+      try {
+        pipWin = await pipApi.requestWindow({ width: 380, height: 720 });
+        for (const ss of document.styleSheets) {
+          try {
+            const s = pipWin.document.createElement('style');
+            s.textContent = [...ss.cssRules].map((r) => r.cssText).join('\n');
+            pipWin.document.head.append(s);
+          } catch (e) {
+            if (ss.href) { const l = pipWin.document.createElement('link'); l.rel = 'stylesheet'; l.href = ss.href; pipWin.document.head.append(l); }
+          }
+        }
+        const theme = document.documentElement.getAttribute('data-theme');
+        if (theme) pipWin.document.documentElement.setAttribute('data-theme', theme);
+        pipWin.document.body.style.margin = '0';
+        pipWin.document.body.append(app);
+        pipWin.addEventListener('pagehide', () => { document.body.prepend(app); pipWin = null; });
+        return;
+      } catch (e) { pipWin = null; }
+    }
+    const v = $('pipvideo');
+    try {
+      if (!v.srcObject) v.srcObject = pipCanvas().captureStream(2);
+      await v.play();
+      await v.requestPictureInPicture();
+      if (navigator.mediaSession) {
+        const ms = navigator.mediaSession;
+        try { ms.metadata = new MediaMetadata({ title: 'Open Loops' }); } catch (e) { /* optional */ }
+        for (const [act, fn] of [['nexttrack', () => pipScroll(1)], ['previoustrack', () => pipScroll(-1)], ['seekforward', () => pipScroll(1)], ['seekbackward', () => pipScroll(-1)], ['pause', () => v.play()], ['play', () => v.play()]]) {
+          try { ms.setActionHandler(act, fn); } catch (e) { /* unsupported action */ }
+        }
+      }
+      drawPip();
+    } catch (e) {
+      showHint('This window cannot float here. Open the page in Chrome, then <code>⋮ → Cast, save and share → Open in a window</code>, and keep that window at the side of your screen.');
+    }
+  }
+  const PIP_W = 420, PIP_H = 820, PIP_SCALE = 2;
+  function pipCanvas() {
+    if (!canvas) { canvas = document.createElement('canvas'); canvas.width = PIP_W * PIP_SCALE; canvas.height = PIP_H * PIP_SCALE; }
+    return canvas;
+  }
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function tint(hex, a) {
+    const m = String(hex).match(/^#([0-9a-f]{6})$/i);
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+  function rrect(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+  function fitText(g, text, max) {
+    if (g.measureText(text).width <= max) return text;
+    let t = text;
+    while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1);
+    return t + '…';
+  }
+  function pipPill(g, x, top, text, color, font) {
+    g.font = `600 10.5px ${font}`;
+    const w = g.measureText(text).width + 12;
+    g.fillStyle = tint(color, 0.16); rrect(g, x, top, w, 16, 8); g.fill();
+    g.fillStyle = color; g.fillText(text, x + 6, top + 11.5);
+    return w;
+  }
+  function pipPills(t, col, C) {
+    const out = [];
+    const st = sentState(t);
+    if (st) out.push([st.text, st.kind === 'ok' ? C.ok : cssVar('--c-claude')]);
+    if (t.source === 'github') {
+      const names = { mine: 'My PR', review_requested: 'Review', mention: 'Mention' };
+      for (const x of (Array.isArray(t.tags) && t.tags.length ? t.tags : [t.state]).filter(Boolean)) out.push([names[x] || x, col]);
+      for (const [txt, k] of ghStatus(t)) out.push([txt, k === 'ok' ? C.ok : k === 'warn' ? C.warn : C.accent]);
+    } else if (linearMention(t)) out.push([`Mention${(t.mentions || 0) > 1 ? ' ×' + t.mentions : ''}`, col]);
+    else if (t.source === 'slack' && (t.mentions || 0) > 1) out.push([`${t.mentions} mentions`, col]);
+    else if (t.source === 'claude') {
+      if (t.attention) out.push(['New reply', C.accent]);
+      if (t.running) out.push(['running', C.ok]);
+      if (t.agents_total > 0) out.push([`${t.agents_total} agent${t.agents_total === 1 ? '' : 's'}`, col]);
+    } else if (t.source === 'calendar') {
+      if (t.rsvp === 'declined') out.push(['Declined', C.warn]);
+      else if (t.rsvp === 'needsAction') out.push(['Needs reply', C.accent]);
+    }
+    return out;
+  }
+  let pipFull = null, pipPage = 0, pipPages = 1;
+  const PIP_HEAD = 46, PIP_FOOT = 22;
+  function pipScroll(d) { pipPage = Math.max(0, Math.min(pipPages - 1, pipPage + d)); drawPip(); }
+  function drawPip() {
+    const v = $('pipvideo');
+    if (!v.srcObject) return;
+    const C = { bg: cssVar('--bg'), surface: cssVar('--surface'), fg: cssVar('--fg'), muted: cssVar('--muted'), line: cssVar('--line'), accent: cssVar('--accent'), warn: cssVar('--warn'), ok: cssVar('--ok') };
+    const font = cssVar('--font') || 'system-ui, sans-serif';
+    const now = Date.now();
+    const open = [...tasks.values()].filter((t) => t.open);
+    const X = 14, IW = PIP_W - 28;
+
+    // 1. the whole list, as tall as it needs to be
+    if (!pipFull) pipFull = document.createElement('canvas');
+    const need = open.length * 52 + SOURCES.length * 40 + 40;
+    if (pipFull.height !== need * PIP_SCALE) { pipFull.width = PIP_W * PIP_SCALE; pipFull.height = need * PIP_SCALE; }
+    const f = pipFull.getContext('2d');
+    f.setTransform(PIP_SCALE, 0, 0, PIP_SCALE, 0, 0);
+    f.textBaseline = 'alphabetic';
+    f.fillStyle = C.bg; f.fillRect(0, 0, PIP_W, need);
+    let y = 14;
+    const rows = [];   // card edges, so a page never cuts through a card and a header stays with its first card
+    for (const s of SOURCES) {
+      const items = open.filter((t) => t.source === s.key);
+      if (!items.length) continue;
+      if (s.key === 'calendar') items.sort((a, b) => (a.start_at || '').localeCompare(b.start_at || ''));
+      else items.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+      const col = cssVar(`--c-${s.key}`) || C.fg;
+      rows.push({ top: y - 14, bottom: y + 10 + 46 });
+      f.fillStyle = col; f.beginPath(); f.arc(X + 4, y - 4, 4, 0, Math.PI * 2); f.fill();
+      f.font = `700 12.5px ${font}`; f.fillText(s.label, X + 15, y);
+      const lw = f.measureText(s.label).width;
+      f.fillStyle = C.muted; f.font = `500 11px ${font}`; f.fillText(String(items.length), X + 15 + lw + 6, y);
+      y += 10;
+      for (const t of items) {
+        const h = 46;
+        const cal = t.source === 'calendar';
+        const st = cal && t.start_at ? new Date(t.start_at).getTime() : 0, en = cal && t.end_at ? new Date(t.end_at).getTime() : 0;
+        const past = cal && en && en <= now, live = cal && st && en && now >= st && now < en;
+        let edge = C.line, stripe = col;
+        if (cal && t.rsvp === 'declined') edge = stripe = C.warn;
+        else if (cal && t.rsvp === 'needsAction') edge = stripe = C.accent;
+        else if (live) edge = col;
+        rows.push({ top: y - 6, bottom: y + h });
+        f.globalAlpha = past ? 0.5 : 1;
+        f.fillStyle = C.surface; rrect(f, X, y, IW, h, 8); f.fill();
+        f.strokeStyle = edge; f.lineWidth = edge === C.line ? 1 : 1.5; f.stroke();
+        f.fillStyle = stripe; rrect(f, X + 0.5, y + 8, 3, h - 16, 2); f.fill();
+        f.fillStyle = C.fg; f.font = `600 12.5px ${font}`;
+        f.fillText(fitText(f, t.title || '(untitled)', IW - 22), X + 12, y + 18);
+        let x2 = X + 12; const top = y + 25;
+        for (const [txt, pc] of pipPills(t, col, C)) x2 += pipPill(f, x2, top, txt, pc, font) + 5;
+        let ctx;
+        if (cal && t.start_at) {
+          f.fillStyle = stripe; f.font = `600 11px ${font}`;
+          const tm = `${hhmm(t.start_at)}–${hhmm(t.end_at)}`; f.fillText(tm, x2, top + 12); x2 += f.measureText(tm).width + 6;
+          ctx = t.context ? '· ' + t.context : '';
+        } else {
+          const parts = [t.context, t.source === 'linear' && t.mention_by ? `${t.mention_by}: ${t.mention_text || ''}` : '', ago(t.created_at)].filter(Boolean);
+          ctx = parts.join(' · ');
+        }
+        f.fillStyle = C.muted; f.font = `400 11px ${font}`;
+        if (ctx) f.fillText(fitText(f, ctx, X + IW - 10 - x2), x2, top + 12);
+        f.globalAlpha = 1;
+        y += h + 6;
+      }
+      y += 16;
+    }
+    const contentH = Math.max(y, 1);
+
+    // 2. one page of it under a fixed header
+    const c = pipCanvas(), g = c.getContext('2d');
+    g.setTransform(PIP_SCALE, 0, 0, PIP_SCALE, 0, 0);
+    g.textBaseline = 'alphabetic';
+    const viewH = PIP_H - PIP_HEAD - PIP_FOOT;
+    const starts = [0];
+    for (;;) {
+      const cur = starts[starts.length - 1];
+      if (cur + viewH >= contentH) break;
+      const cut = rows.filter((r) => r.bottom > cur + viewH && r.top > cur).map((r) => r.top);
+      const next = cut.length ? Math.min(...cut) : cur + viewH;
+      starts.push(next > cur ? next : cur + viewH);
+    }
+    pipPages = starts.length;
+    pipPage = Math.min(pipPage, pipPages - 1);
+    g.fillStyle = C.bg; g.fillRect(0, 0, PIP_W, PIP_H);
+    g.fillStyle = C.fg; g.font = `700 18px ${font}`; g.fillText('Open Loops', X, 30);
+    if (open.length) pipPill(g, X + g.measureText('Open Loops').width + 10, 17, `${open.length} open`, C.accent, font);
+    const sy = starts[pipPage], sh = Math.min(viewH, contentH - sy);
+    if (sh > 0) g.drawImage(pipFull, 0, sy * PIP_SCALE, PIP_W * PIP_SCALE, sh * PIP_SCALE, 0, PIP_HEAD, PIP_W, sh);
+    if (pipPages > 1) {
+      // scrollbar at the right edge + where we are
+      const trackY = PIP_HEAD, trackH = viewH;
+      g.fillStyle = tint(C.muted, 0.18); rrect(g, PIP_W - 6, trackY, 3, trackH, 2); g.fill();
+      const thumbH = Math.max(24, trackH * viewH / contentH), thumbY = trackY + (trackH - thumbH) * (sy / Math.max(1, contentH - viewH));
+      g.fillStyle = C.muted; rrect(g, PIP_W - 6, thumbY, 3, thumbH, 2); g.fill();
+      g.fillStyle = C.muted; g.font = `500 10.5px ${font}`;
+      g.fillText(`page ${pipPage + 1} of ${pipPages} · use the ⏮ ⏭ buttons of this window`, X, PIP_H - 8);
+    }
+  }
+
+  // ---- Boot ---------------------------------------------------------------
+  async function start() {
+    const use = (n) => (window.claude && window.claude.use ? window.claude.use(n) : Promise.resolve(null));
+    [db, mcp, comments] = await Promise.all([use('db'), use('mcp'), use('comments')]);
+    if (!db) {
+      // Local file preview only: lets a developer feed example rows in without a store.
+      window.__pipCanvas = pipCanvas; window.__pipScroll = pipScroll;
+      window.__openLoopsDemo = (rows, meta, cat) => { tasks = new Map(rows.map((r) => [r.id, r])); sync = meta || null; if (cat) { catalog = JSON.parse(JSON.stringify(cat)); renderSuggestions(); } Object.assign(fresh, { slack: { at: Date.now() }, linear: { at: Date.now() } }); render(); };
+      render(); return;
+    }
+    try { const c = await db.doc('meta/config').get(); if (c.exists) cfg = c.data() || {}; } catch (e) { /* no settings yet */ }
+    db.doc('meta/config').onSnapshot((snap) => { cfg = snap.exists ? (snap.data() || {}) : {}; render(); }, () => {});
+    let first = true;
+    db.collection('tasks').onSnapshot((snap) => {
+      const next = new Map();
+      for (const d of snap.docs) next.set(d.id, { id: d.id, ...d.data() });
+      for (const [id, t] of tasks) if (t._pending && !next.has(id)) next.set(id, t); // keep optimistic rows until confirmed
+      tasks = next;
+      render();
+      sweepMeetings();
+      if (first) { first = false; pullAll(); }
+    }, (e) => showHint('Live updates stopped (' + esc(e.code) + '). Reload the page.'));
+    db.doc('meta/sync').onSnapshot((snap) => { sync = snap.exists ? snap.data() : null; render(); }, () => {});
+    db.doc('meta/slack_groups').onSnapshot((snap) => setGroups(snap.exists ? snap.data() : null), () => {});
+    try { const cs = await db.doc('meta/slack_group_catalog').get(); if (cs.exists) catalog = { groups: JSON.parse(JSON.stringify((cs.data() && cs.data().groups) || {})) }; } catch (e) { /* first run: empty catalog */ }
+    renderSuggestions();
+    setInterval(() => { render(); sweepMeetings(); }, 60000);
+    setInterval(pullAll, POLL_MS);
+  }
+  start();
+})();
+</script>
